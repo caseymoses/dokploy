@@ -21,6 +21,51 @@ import { type Github, getIssueComment } from "./github";
 
 export type PreviewDeployment = typeof previewDeployments.$inferSelect;
 
+/**
+ * Sanitizes a branch name for use in DNS-compatible domain names.
+ * - Converts to lowercase
+ * - Replaces invalid characters with dashes
+ * - Collapses multiple dashes
+ * - Trims leading/trailing dashes
+ * - Truncates to 63 chars (DNS label limit)
+ */
+const sanitizeBranchName = (branch: string): string => {
+	return branch
+		.toLowerCase()
+		.replace(/[^a-z0-9-]/g, "-")
+		.replace(/-+/g, "-")
+		.replace(/^-|-$/g, "")
+		.substring(0, 63);
+};
+
+interface TemplateContext {
+	appName: string;
+	prNumber: string;
+	branch: string;
+	random: string;
+}
+
+/**
+ * Parses a wildcard domain template and substitutes variables.
+ * Returns null if the template uses legacy format (starts with *.)
+ */
+const parseWildcardTemplate = (
+	template: string,
+	context: TemplateContext,
+): string | null => {
+	// If it's the old format (starts with *.), return null to use legacy behavior
+	if (template.startsWith("*.")) {
+		return null;
+	}
+
+	// Replace template variables
+	return template
+		.replace(/\$\{appName\}/g, context.appName)
+		.replace(/\$\{prNumber\}/g, context.prNumber)
+		.replace(/\$\{branch\}/g, sanitizeBranchName(context.branch))
+		.replace(/\$\{random\}/g, context.random);
+};
+
 export const findPreviewDeploymentById = async (
 	previewDeploymentId: string,
 ) => {
@@ -133,16 +178,24 @@ export const createPreviewDeployment = async (
 	schema: typeof apiCreatePreviewDeployment._type,
 ) => {
 	const application = await findApplicationById(schema.applicationId);
-	const appName = `preview-${application.appName}-${generatePassword(6)}`;
+
+	// Check if using template format (for consistent appName)
+	const isTemplateFormat =
+		application.previewWildcard && !application.previewWildcard.startsWith("*.");
+	const appName = isTemplateFormat
+		? `preview-${application.appName}-pr${schema.pullRequestNumber}`
+		: `preview-${application.appName}-${generatePassword(6)}`;
 
 	const org = await db.query.organization.findFirst({
 		where: eq(organization.id, application.environment.project.organizationId),
 	});
 	const generateDomain = await generateWildcardDomain(
 		application.previewWildcard || "*.traefik.me",
-		appName,
+		application.appName,
 		application.server?.ipAddress || "",
 		org?.ownerId || "",
+		schema.branch,
+		schema.pullRequestNumber,
 	);
 
 	const octokit = authGithub(application?.github as Github);
@@ -236,11 +289,32 @@ const generateWildcardDomain = async (
 	appName: string,
 	serverIp: string,
 	userId: string,
+	branch: string,
+	pullRequestNumber: string,
 ): Promise<string> => {
-	if (!baseDomain.startsWith("*.")) {
-		throw new Error('The base domain must start with "*."');
+	const random = generatePassword(6);
+
+	// Try template parsing first (new format)
+	const parsed = parseWildcardTemplate(baseDomain, {
+		appName: `preview-${appName}`,
+		prNumber: pullRequestNumber,
+		branch,
+		random,
+	});
+
+	if (parsed) {
+		return parsed;
 	}
-	const hash = `${appName}`;
+
+	// Legacy behavior for *.domain.com format
+	if (!baseDomain.startsWith("*.")) {
+		throw new Error(
+			'The base domain must start with "*." or use template variables like ${appName}',
+		);
+	}
+
+	const hash = `preview-${appName}-${random}`;
+
 	if (baseDomain.includes("traefik.me")) {
 		let ip = "";
 

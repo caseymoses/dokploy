@@ -415,9 +415,12 @@ export const deployPreviewApplication = async ({
 			body: `### Dokploy Preview Deployment\n\n${buildingComment}`,
 		});
 		application.appName = previewDeployment.appName;
-		application.env = `${application.previewEnv}\nDOKPLOY_DEPLOY_URL=${previewDeployment?.domain?.host}`;
-		application.buildArgs = `${application.previewBuildArgs}\nDOKPLOY_DEPLOY_URL=${previewDeployment?.domain?.host}`;
-		application.buildSecrets = `${application.previewBuildSecrets}\nDOKPLOY_DEPLOY_URL=${previewDeployment?.domain?.host}`;
+		const deployUrl = previewDeployment?.domain?.host;
+		const prNumber = previewDeployment.pullRequestNumber;
+
+		application.env = `${application.previewEnv}\nDOKPLOY_DEPLOY_URL=${deployUrl}\nPR_NUMBER=${prNumber}`;
+		application.buildArgs = `${application.previewBuildArgs}\nDOKPLOY_DEPLOY_URL=${deployUrl}\nPR_NUMBER=${prNumber}`;
+		application.buildSecrets = `${application.previewBuildSecrets}\nDOKPLOY_DEPLOY_URL=${deployUrl}\nPR_NUMBER=${prNumber}`;
 		application.rollbackActive = false;
 		application.buildRegistry = null;
 		application.rollbackRegistry = null;

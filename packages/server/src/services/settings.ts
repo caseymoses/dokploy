@@ -215,38 +215,6 @@ echo "$json_output"
 	return result;
 };
 
-export const cleanupFullDocker = async (serverId?: string | null) => {
-	const cleanupImages = "docker image prune --force";
-	const cleanupVolumes = "docker volume prune --force";
-	const cleanupContainers = "docker container prune --force";
-	const cleanupSystem = "docker system prune  --force --volumes";
-	const cleanupBuilder = "docker builder prune  --force";
-
-	try {
-		if (serverId) {
-			await execAsyncRemote(
-				serverId,
-				`
-	${cleanupImages}
-	${cleanupVolumes}
-	${cleanupContainers}
-	${cleanupSystem}
-	${cleanupBuilder}
-			`,
-			);
-		}
-		await execAsync(`
-			${cleanupImages}
-			${cleanupVolumes}
-			${cleanupContainers}
-			${cleanupSystem}
-			${cleanupBuilder}
-					`);
-	} catch (error) {
-		console.log(error);
-	}
-};
-
 export const getDockerResourceType = async (
 	resourceName: string,
 	serverId?: string,

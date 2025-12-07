@@ -2,11 +2,12 @@ import {
 	canAccessToTraefikFiles,
 	checkGPUStatus,
 	checkPortInUse,
-	cleanStoppedContainers,
-	cleanUpDockerBuilder,
-	cleanUpSystemPrune,
-	cleanUpUnusedImages,
-	cleanUpUnusedVolumes,
+	cleanupAll,
+	cleanupBuilders,
+	cleanupContainers,
+	cleanupImages,
+	cleanupSystem,
+	cleanupVolumes,
 	DEFAULT_UPDATE_DATA,
 	execAsync,
 	findServerById,
@@ -161,41 +162,38 @@ export const settingsRouter = createTRPCRouter({
 	cleanUnusedImages: adminProcedure
 		.input(apiServerSchema)
 		.mutation(async ({ input }) => {
-			await cleanUpUnusedImages(input?.serverId);
+			await cleanupImages(input?.serverId);
 			return true;
 		}),
 	cleanUnusedVolumes: adminProcedure
 		.input(apiServerSchema)
 		.mutation(async ({ input }) => {
-			await cleanUpUnusedVolumes(input?.serverId);
+			await cleanupVolumes(input?.serverId);
 			return true;
 		}),
 	cleanStoppedContainers: adminProcedure
 		.input(apiServerSchema)
 		.mutation(async ({ input }) => {
-			await cleanStoppedContainers(input?.serverId);
+			await cleanupContainers(input?.serverId);
 			return true;
 		}),
 	cleanDockerBuilder: adminProcedure
 		.input(apiServerSchema)
 		.mutation(async ({ input }) => {
-			await cleanUpDockerBuilder(input?.serverId);
+			await cleanupBuilders(input?.serverId);
 		}),
 	cleanDockerPrune: adminProcedure
 		.input(apiServerSchema)
 		.mutation(async ({ input }) => {
-			await cleanUpSystemPrune(input?.serverId);
-			await cleanUpDockerBuilder(input?.serverId);
+			await cleanupSystem(input?.serverId);
+			await cleanupBuilders(input?.serverId);
 
 			return true;
 		}),
 	cleanAll: adminProcedure
 		.input(apiServerSchema)
 		.mutation(async ({ input }) => {
-			await cleanUpUnusedImages(input?.serverId);
-			await cleanStoppedContainers(input?.serverId);
-			await cleanUpDockerBuilder(input?.serverId);
-			await cleanUpSystemPrune(input?.serverId);
+			await cleanupAll(input?.serverId);
 
 			return true;
 		}),
@@ -213,7 +211,7 @@ export const settingsRouter = createTRPCRouter({
 			if (IS_CLOUD) {
 				return true;
 			}
-			await updateUser(ctx.user.id, {
+			await updateUser(ctx.user.ownerId, {
 				sshPrivateKey: input.sshPrivateKey,
 			});
 
@@ -225,7 +223,7 @@ export const settingsRouter = createTRPCRouter({
 			if (IS_CLOUD) {
 				return true;
 			}
-			const user = await updateUser(ctx.user.id, {
+			const user = await updateUser(ctx.user.ownerId, {
 				host: input.host,
 				...(input.letsEncryptEmail && {
 					letsEncryptEmail: input.letsEncryptEmail,
@@ -252,7 +250,7 @@ export const settingsRouter = createTRPCRouter({
 		if (IS_CLOUD) {
 			return true;
 		}
-		await updateUser(ctx.user.id, {
+		await updateUser(ctx.user.ownerId, {
 			sshPrivateKey: null,
 		});
 		return true;
@@ -293,9 +291,9 @@ export const settingsRouter = createTRPCRouter({
 							console.log(
 								`Docker Cleanup ${new Date().toLocaleString()}] Running...`,
 							);
-							await cleanUpUnusedImages(server.serverId);
-							await cleanUpDockerBuilder(server.serverId);
-							await cleanUpSystemPrune(server.serverId);
+
+							await cleanupAll(server.serverId);
+
 							await sendDockerCleanupNotifications(server.organizationId);
 						});
 					}
@@ -312,7 +310,7 @@ export const settingsRouter = createTRPCRouter({
 					}
 				}
 			} else if (!IS_CLOUD) {
-				const userUpdated = await updateUser(ctx.user.id, {
+				const userUpdated = await updateUser(ctx.user.ownerId, {
 					enableDockerCleanup: input.enableDockerCleanup,
 				});
 
@@ -321,9 +319,9 @@ export const settingsRouter = createTRPCRouter({
 						console.log(
 							`Docker Cleanup ${new Date().toLocaleString()}] Running...`,
 						);
-						await cleanUpUnusedImages();
-						await cleanUpDockerBuilder();
-						await cleanUpSystemPrune();
+
+						await cleanupAll();
+
 						await sendDockerCleanupNotifications(
 							ctx.session.activeOrganizationId,
 						);

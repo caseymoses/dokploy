@@ -418,9 +418,21 @@ export const deployPreviewApplication = async ({
 		const deployUrl = previewDeployment?.domain?.host;
 		const prNumber = previewDeployment.pullRequestNumber;
 
-		application.env = `${application.previewEnv}\nDOKPLOY_DEPLOY_URL=${deployUrl}\nPR_NUMBER=${prNumber}`;
-		application.buildArgs = `${application.previewBuildArgs}\nDOKPLOY_DEPLOY_URL=${deployUrl}\nPR_NUMBER=${prNumber}`;
-		application.buildSecrets = `${application.previewBuildSecrets}\nDOKPLOY_DEPLOY_URL=${deployUrl}\nPR_NUMBER=${prNumber}`;
+		// Substitute template variables in preview env/args/secrets
+		const substituteTemplateVars = (value: string | null): string => {
+			if (!value) return "";
+			return value
+				.replace(/\$\{PR_NUMBER\}/g, prNumber)
+				.replace(/\$\{DOKPLOY_DEPLOY_URL\}/g, deployUrl || "");
+		};
+
+		const processedPreviewEnv = substituteTemplateVars(application.previewEnv);
+		const processedPreviewBuildArgs = substituteTemplateVars(application.previewBuildArgs);
+		const processedPreviewBuildSecrets = substituteTemplateVars(application.previewBuildSecrets);
+
+		application.env = `${processedPreviewEnv}\nDOKPLOY_DEPLOY_URL=${deployUrl}\nPR_NUMBER=${prNumber}`;
+		application.buildArgs = `${processedPreviewBuildArgs}\nDOKPLOY_DEPLOY_URL=${deployUrl}\nPR_NUMBER=${prNumber}`;
+		application.buildSecrets = `${processedPreviewBuildSecrets}\nDOKPLOY_DEPLOY_URL=${deployUrl}\nPR_NUMBER=${prNumber}`;
 		application.rollbackActive = false;
 		application.buildRegistry = null;
 		application.rollbackRegistry = null;

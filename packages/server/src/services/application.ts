@@ -478,6 +478,18 @@ export const deployPreviewApplication = async ({
 		await updatePreviewDeployment(previewDeploymentId, {
 			previewStatus: "error",
 		});
+
+		const buildLink = `${await getDokployUrl()}/dashboard/project/${application.environment.projectId}/environment/${application.environmentId}/services/application/${application.applicationId}`;
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		await sendBuildErrorNotifications({
+			projectName: application.environment.project.name,
+			applicationName: application.name,
+			applicationType: "preview",
+			errorMessage: `Preview deployment failed.\nPR: #${previewDeployment.pullRequestNumber}\nBranch: ${previewDeployment.branch}\nPreview URL: ${previewDomain}\n\n${errorMessage || "Error building preview deployment"}`,
+			buildLink,
+			organizationId: application.environment.project.organizationId,
+		});
+
 		throw error;
 	}
 
@@ -609,6 +621,18 @@ export const rebuildPreviewApplication = async ({
 		await updatePreviewDeployment(previewDeploymentId, {
 			previewStatus: "error",
 		});
+
+		const buildLink = `${await getDokployUrl()}/dashboard/project/${application.environment.projectId}/environment/${application.environmentId}/services/application/${application.applicationId}`;
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		await sendBuildErrorNotifications({
+			projectName: application.environment.project.name,
+			applicationName: application.name,
+			applicationType: "preview",
+			errorMessage: `Preview deployment failed.\nPR: #${previewDeployment.pullRequestNumber}\nBranch: ${previewDeployment.branch}\nPreview URL: ${previewDomain}\n\n${errorMessage || "Error building preview deployment"}`,
+			buildLink,
+			organizationId: application.environment.project.organizationId,
+		});
+
 		throw error;
 	}
 

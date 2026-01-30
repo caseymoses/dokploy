@@ -479,7 +479,7 @@ export const deployPreviewApplication = async ({
 			previewStatus: "error",
 		});
 
-		const buildLink = `${await getDokployUrl()}/dashboard/project/${application.environment.projectId}/environment/${application.environmentId}/services/application/${application.applicationId}`;
+		const buildLink = `${await getDokployUrl()}/dashboard/project/${application.environment.projectId}/environment/${application.environmentId}/services/application/${application.applicationId}?tab=deployments`;
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		await sendBuildErrorNotifications({
 			projectName: application.environment.project.name,
@@ -622,7 +622,7 @@ export const rebuildPreviewApplication = async ({
 			previewStatus: "error",
 		});
 
-		const buildLink = `${await getDokployUrl()}/dashboard/project/${application.environment.projectId}/environment/${application.environmentId}/services/application/${application.applicationId}`;
+		const buildLink = `${await getDokployUrl()}/dashboard/project/${application.environment.projectId}/environment/${application.environmentId}/services/application/${application.applicationId}?tab=deployments`;
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		await sendBuildErrorNotifications({
 			projectName: application.environment.project.name,
